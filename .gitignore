@@ -3,3 +3,4 @@
 /config/__pycache__/config.cpython-311.pyc
 /data/matches.csv
 /twitterconnect.py
+/data/out.txt

@@ -1,4 +1,4 @@
-import pandas as pd
+from pandas import read_csv
 import re
 import argparse
 
@@ -6,15 +6,15 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("data", help="Specify the filepath for the data file")
-    parser.add_argument("threshold", help="Minimum amount of mentions a user needs to be printed", type=int)
-    parser.add_argument("-u", "--users", help="Specify how many users to print", type=int, default=-1)
+    parser.add_argument("-t", "--threshold", help="Specify minimum amount of mentions a user needs to be printed", type=int, default=-2)
+    parser.add_argument("-u", "--users", help="Specify how many users to print", type=int, default=9223372036854775807)
     parser.add_argument("-o", "--output", help="Specifiy the filepath to save the output to")
 
     args = parser.parse_args()
     return args
 
 def search(datapath, threshold=int, users=int, output=None):
-    data = pd.read_csv(datapath)
+    data = read_csv(datapath)
     target_col = data['fact_tweet']
 
     fakes = re.findall(r'@\w+', target_col.to_string())
@@ -26,7 +26,7 @@ def search(datapath, threshold=int, users=int, output=None):
     top_appearing = []
     stop = 1
     for key, value in sorted(fake_accs.items(), key=lambda kv: kv[1], reverse=True):
-        if value > threshold:
+        if threshold == -2 or value > threshold:
             if stop > users:
                 break
             stop += 1
