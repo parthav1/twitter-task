@@ -1,3 +1,5 @@
 /config/config.py
 /data_visual.ipynb
 /config/__pycache__/config.cpython-311.pyc
+/data/matches.csv
+/twitterconnect.py
