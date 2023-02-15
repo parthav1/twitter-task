@@ -11,9 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["data/matches.csv", 
-                        "-t54"
-            ]
-        },
+            "args": ["data/matches.csv", "-u5"]
+        }
     ]
 }

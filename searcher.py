@@ -1,23 +1,17 @@
-from pandas import read_csv
+import pandas as pd
 import re
 import argparse
+import configparser
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group()
-
-    group.add_argument("--true", action="store_true", help="Output contains statements verified to be true" )
-    group.add_argument("--false", action="store_true", help="Output contains statements verified to be false")
 
     parser.add_argument("data", help="Specify the filepath for the data file")
     parser.add_argument("-t", "--threshold", help="Specify minimum amount of mentions a user needs to be printed", type=int, default=-2)
     parser.add_argument("-u", "--users", help="Specify how many users to print", type=int, default=9223372036854775807)
-
-    parser.add_argument("--include-partly-true", action="store_true", help="Output contains statements that are mostly true")
-    parser.add_argument("--include-mostly-false", action="store_true", help="Output contains statements that are mostly false")
-
-
-    parser.add_argument("-o", "--output", help="Specifiy the filepath to save the full output to")
+    
+    parser.add_argument("--config", help="If using a config file and specify its path")
+    parser.add_argument("-o", "--output", help="Specifiy the filepath to save the full output to; having a config will affect the output that goes to the file")
     parser.add_argument("-f", "--force", action="store_true", help="Force write output into a file even if file already exists")
 
     args = parser.parse_args()
@@ -26,34 +20,59 @@ def parse_args():
 def search(datapath, 
            threshold=int, 
            users=int, 
-           truth=bool, false=bool, partly_true=bool, mostly_false=bool, 
+           config_path=str,
            output=None, force=bool):
     
-    data = read_csv(datapath)
+    data = pd.read_csv(datapath)
     target_col = data['fact_tweet']
     truth_col = data['Truth Score']
+    
+    unique_strings = data['Truth Score'].value_counts().to_dict()
+    strip_dict = {k.strip(): False for k in unique_strings}
+    config_dict = {}
+    if config_path is not None:
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        for k, v in strip_dict.items():
+            if config.has_option('truth', k) and config.getboolean('truth', k):
+                 strip_dict[k] = True
 
-    truths = [str for str in truth_col if str == "True"]
-    falses = [str for str in truth_col if str == "False"]
-    mostly_truths = [str for str in truth_col if str == "Mostly true"] 
-    mostly_falses = [str for str in truth_col if str == "Mostly false"]
+        config_dict = {}
+        for k in unique_strings:
+            config_dict[k] = strip_dict[k.strip()]
 
-    fakes = re.findall(r'@\w+', target_col.to_string())
+    accounts = []
+    for index, row in target_col.items():
+        fake = re.findall(r'@\w+', str(row))
+        for acc in fake:
+            accounts.append((acc, index, truth_col.iloc[index]))
+
+    out = []
+    if config_path is not None:
+        for key, value in config_dict.items():
+            for acc, row, truth in accounts:
+                if key == truth and config_dict[key] == True:
+                    out.append(acc)
+    else:
+        for index, row in target_col.items():
+            fake = re.findall(r'@\w+', str(row))
+            for acc in fake:
+                out.append(acc)
+
     fake_accs = {}
-
-    for acc in fakes:
+    for acc in out:
         fake_accs[acc] = fake_accs.get(acc, 0) + 1
 
-    top_appearing = []
+    sorted_fakes = sorted(fake_accs.items(), key=lambda kv: kv[1], reverse=True)
+
     stop = 1
-    for key, value in sorted(fake_accs.items(), key=lambda kv: kv[1], reverse=True):
-        if threshold == -2 or value > threshold:
+    for key, value in sorted_fakes:
+        if (threshold == -2 or value > threshold):
             if stop > users:
                 break
             stop += 1
             print("%s: %s" % (key, value))
-            top_appearing.append(key)
-
+    
     if output is not None:
         mode = 'a' if force else 'w'
         with open(output, mode) as f:
@@ -64,10 +83,7 @@ def main():
     search(parse_args().data, 
            parse_args().threshold, 
            parse_args().users,
-           parse_args().true,
-           parse_args().false,
-           parse_args().include_partly_true,
-           parse_args().include_mostly_false,
+           parse_args().config,
            parse_args().output,
            parse_args().force)
     
