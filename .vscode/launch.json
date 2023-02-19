@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["data/matches.csv", "-u5"]
+            "args": ["data/matches.csv", "--create-config"]
         }
     ]
 }
